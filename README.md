@@ -26,7 +26,7 @@ WROOM-32 based development board. Very high-quality Adafruit part with superb
 Unfortunately has high quiescent power consumption (see https://blog.voneicken.com/2018/lp-wifi-esp32-boards/) 
 making it a poor choice for powering via a battery. So Sad.
 
-## [EzSBC ESP32-01](https://www.ezsbc.com/index.php/products/wifi01-33.htm)
+## [EzSBC ESP32-01](https://www.ezsbc.com/index.php/products/wifi01-33.html)
 
 Out of the box 17uA quiescent power consumption. WROOM-32 based board just like the Feather. Great price.
 
