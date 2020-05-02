@@ -23,8 +23,8 @@
  * SOFTWARE.
  */
 
-#ifndef GATE_SENSOR_MY_LOG_H
-#define GATE_SENSOR_MY_LOG_H
+#ifndef GATE_SENSOR_MLOG_H
+#define GATE_SENSOR_MLOG_H
 
 #ifdef __cplusplus
 extern "C"
@@ -136,10 +136,11 @@ int log_printf(const char *fmt, ...);
 #endif
 
 #define LI myLog_i
+#define LE myLog_e
 
 #ifdef __cplusplus
 }
 #endif
 
 
-#endif //GATE_SENSOR_MY_LOG_H
+#endif //GATE_SENSOR_MLOG_H

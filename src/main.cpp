@@ -8,69 +8,49 @@
 
 #include "Arduino.h"
 #include "WiFi.h"
-#include "my-log.h"
+#include "mlog.h"
+#include "rtc_data.h"
+#include "time_util.h"
+#include "wifi_util.h"
 
-//time.google.com has address 216.239.35.8
-//time.google.com has address 216.239.35.4
-//time.google.com has address 216.239.35.12
-//time.google.com has address 216.239.35.0
 
-namespace metric {
-    RTC_DATA_ATTR static uint32_t sent_events = 0;
-    RTC_DATA_ATTR static uint32_t sent_telemetry = 0;
+void onBoot() {
+    LI("start");
 
-    RTC_DATA_ATTR static uint64_t cpu_starts = 0;
-    RTC_DATA_ATTR static uint64_t ulp_sensor_checks = 0;
+    connectWifi();
+    updateTime(&rd::ts_start);
+    LI("NTP time %s", timeStr(rd::ts_start).c_str());
 
-    RTC_DATA_ATTR static uint64_t ts_start = 0;
-    RTC_DATA_ATTR static uint64_t ts_last_wake = 0;
+    LI("end");
 }
 
-boolean waitForWifi() {
-    const int MAX_ATTEMPTS = 10;
-    int attempt = 1;
+void onWake() {
+    LI("start");
 
-    while (WiFi.status() != WL_CONNECTED && attempt < MAX_ATTEMPTS) {
-        delay(200);
-        LI("wifi connect attempt %d/%d", attempt, MAX_ATTEMPTS);
-        attempt++;
-    }
+    connectWifi();
+    tm ts_prev = rd::ts_current;
+    updateTime(&rd::ts_current);
+    LI("starts %llu, last wake %s, now %s",
+       rd::cpu_starts, timeStr(ts_prev).c_str(), timeStr(rd::ts_current).c_str());
 
-    return WiFi.status() == WL_CONNECTED;
-}
-
-void initialStart() {
-    LI("initial startup");
-
-    if (!waitForWifi()) {
-        LI("wifi failed to start, sleeping");
-        return;
-    }
-
-    metric::ts_start = millis();
+    LI("end");
 }
 
 void setup() {
-    const char *ssid = "-iot";
-    const char *pass = "iot!";
-
     Serial.begin(115200);
 
-    metric::cpu_starts++;
+    rd::cpu_starts++;
 
-    WiFi.begin(ssid, pass);
-
-    if (metric::ts_start == 0) {
-        initialStart();
+    if (rd::ts_start.tm_mon == 0) {
+        onBoot();
     } else {
-        uint64_t now = millis();
-        LI("starts %llu, last wake %llu, now %llu", metric::cpu_starts, metric::ts_last_wake, now);
-        metric::ts_last_wake += now;
+        onWake();
     }
 
     WiFi.disconnect(true);
-    esp_deep_sleep(2000000);
+    esp_deep_sleep(c::DEEP_SLEEP_USEC);
 }
 
 void loop() {
 }
+

@@ -30,4 +30,4 @@ add_custom_target(
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-add_executable(Z_DUMMY_TARGET ${SRC_LIST} src/certs.h src/my-log.h)
+add_executable(Z_DUMMY_TARGET ${SRC_LIST} src/certs.h src/mlog.h src/addr.h src/time_util.h src/rtc_data.h src/wifi_util.h src/constants.h)
