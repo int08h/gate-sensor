@@ -6,11 +6,12 @@
 # The `CMakeListsUser.txt` will not be overwritten by PlatformIO.
 
 
+
 set(CMAKE_CONFIGURATION_TYPES "featheresp32" CACHE STRING "Build Types reflect PlatformIO Environments" FORCE)
 
 
-SET(CMAKE_C_COMPILER "$ENV{HOME}/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-gcc")
-SET(CMAKE_CXX_COMPILER "$ENV{HOME}/.platformio/packages/toolchain-xtensa32/bin/xtensa-esp32-elf-g++")
+SET(CMAKE_C_COMPILER "$ENV{HOME}/.platformio/packages/toolchain-xtensa32@2.50200.80/bin/xtensa-esp32-elf-gcc")
+SET(CMAKE_CXX_COMPILER "$ENV{HOME}/.platformio/packages/toolchain-xtensa32@2.50200.80/bin/xtensa-esp32-elf-g++")
 SET(CMAKE_CXX_FLAGS "-fno-rtti -fno-exceptions -std=gnu++11 -Os -g3 -Wall -nostdlib -Wpointer-arith -Wno-error=unused-but-set-variable -Wno-error=unused-variable -mlongcalls -ffunction-sections -fdata-sections -fstrict-volatile-bitfields -Wno-error=deprecated-declarations -Wno-error=unused-function -Wno-unused-parameter -Wno-sign-compare -fstack-protector -fexceptions -Werror=reorder")
 SET(CMAKE_C_FLAGS "-std=gnu99 -Wno-old-style-declaration -Os -g3 -Wall -nostdlib -Wpointer-arith -Wno-error=unused-but-set-variable -Wno-error=unused-variable -mlongcalls -ffunction-sections -fdata-sections -fstrict-volatile-bitfields -Wno-error=deprecated-declarations -Wno-error=unused-function -Wno-unused-parameter -Wno-sign-compare -fstack-protector -fexceptions -Werror=reorder")
 
@@ -18,7 +19,7 @@ SET(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 11)
 
 if (CMAKE_BUILD_TYPE MATCHES "featheresp32")
-    add_definitions(-D'PLATFORMIO=40301')
+    add_definitions(-D'PLATFORMIO=40303')
     add_definitions(-D'ARDUINO_FEATHER_ESP32')
     add_definitions(-D'ESP32')
     add_definitions(-D'ESP_PLATFORM')
@@ -30,8 +31,8 @@ if (CMAKE_BUILD_TYPE MATCHES "featheresp32")
     add_definitions(-D'ARDUINO_VARIANT=\"feather_esp32\"')
     add_definitions(-D'ARDUINO_BOARD=\"Adafruit ESP32 Feather\"')
 
+    include_directories("${CMAKE_CURRENT_LIST_DIR}/include")
     include_directories("${CMAKE_CURRENT_LIST_DIR}/src")
-    include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/tools/sdk/include/config")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/tools/sdk/include/app_trace")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/tools/sdk/include/app_update")
@@ -90,8 +91,6 @@ if (CMAKE_BUILD_TYPE MATCHES "featheresp32")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/tools/sdk/include/fb_gfx")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/cores/esp32")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/variants/feather_esp32")
-    include_directories("$ENV{HOME}/.platformio/lib/FreeRTOS_SAMD21_ID5851/src")
-    include_directories("$ENV{HOME}/.platformio/lib/WiFi101_ID299/src")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/libraries/AsyncUDP/src")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/libraries/AzureIoT/src")
@@ -115,15 +114,25 @@ if (CMAKE_BUILD_TYPE MATCHES "featheresp32")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/libraries/Ticker/src")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/libraries/Update/src")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/libraries/WebServer/src")
+    include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/libraries/WiFiClientSecure/src")
     include_directories("$ENV{HOME}/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src")
-    include_directories("$ENV{HOME}/.platformio/packages/toolchain-xtensa32/xtensa-esp32-elf/include")
-    include_directories("$ENV{HOME}/.platformio/packages/toolchain-xtensa32/xtensa-esp32-elf/include/c++/5.2.0")
-    include_directories("$ENV{HOME}/.platformio/packages/toolchain-xtensa32/xtensa-esp32-elf/include/c++/5.2.0/xtensa-esp32-elf")
-    include_directories("$ENV{HOME}/.platformio/packages/toolchain-xtensa32/lib/gcc/xtensa-esp32-elf/5.2.0/include")
-    include_directories("$ENV{HOME}/.platformio/packages/toolchain-xtensa32/lib/gcc/xtensa-esp32-elf/5.2.0/include-fixed")
+    include_directories("$ENV{HOME}/.platformio/packages/toolchain-xtensa32@2.50200.80/xtensa-esp32-elf/include/c++/5.2.0")
+    include_directories("$ENV{HOME}/.platformio/packages/toolchain-xtensa32@2.50200.80/xtensa-esp32-elf/include/c++/5.2.0/xtensa-esp32-elf")
+    include_directories("$ENV{HOME}/.platformio/packages/toolchain-xtensa32@2.50200.80/lib/gcc/xtensa-esp32-elf/5.2.0/include")
+    include_directories("$ENV{HOME}/.platformio/packages/toolchain-xtensa32@2.50200.80/lib/gcc/xtensa-esp32-elf/5.2.0/include-fixed")
+    include_directories("$ENV{HOME}/.platformio/packages/toolchain-xtensa32@2.50200.80/xtensa-esp32-elf/include")
     include_directories("$ENV{HOME}/.platformio/packages/tool-unity")
-    include_directories("${CMAKE_CURRENT_LIST_DIR}/include")
+
+    FILE(GLOB_RECURSE EXTRA_LIB_SOURCES
+        ${CMAKE_CURRENT_LIST_DIR}/.pio/libdeps/featheresp32/*.*
+    )
 endif()
 
-FILE(GLOB_RECURSE SRC_LIST "${CMAKE_CURRENT_LIST_DIR}/src/*.*" "${CMAKE_CURRENT_LIST_DIR}/lib/*.*" "${CMAKE_CURRENT_LIST_DIR}/.pio/libdeps/featheresp32/*.*")
+
+FILE(GLOB_RECURSE SRC_LIST
+    ${CMAKE_CURRENT_LIST_DIR}/src/*.*
+    ${CMAKE_CURRENT_LIST_DIR}/lib/*.*
+)
+
+list(APPEND SRC_LIST ${EXTRA_LIB_SOURCES})
