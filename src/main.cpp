@@ -13,27 +13,44 @@
 #include "time_util.h"
 #include "wifi_util.h"
 
-
 void onBoot() {
     LI("start");
 
-    connectWifi();
-    updateTime(&rd::ts_start);
+    if (!connectWifi()) {
+        return;
+    }
+
+    time_t now = pollTime();
+    rd::ts_start = now;
+    rd::ts_current = now;
     LI("NTP time %s", timeStr(rd::ts_start).c_str());
 
-    LI("end");
+    if (rd::jwt.isExpired(now)) {
+        rd::jwt.regenerate(now);
+    }
+
+    LI("jwt = %s", rd::jwt.value().c_str());
 }
 
 void onWake() {
     LI("start");
 
-    connectWifi();
-    tm ts_prev = rd::ts_current;
-    updateTime(&rd::ts_current);
+    if (!connectWifi()) {
+        return;
+    }
+
+    time_t ts_prev = rd::ts_current;
+    rd::ts_current = pollTime();
     LI("starts %llu, last wake %s, now %s",
        rd::cpu_starts, timeStr(ts_prev).c_str(), timeStr(rd::ts_current).c_str());
+}
 
-    LI("end");
+void deepSleep() {
+    LI("preparing for deep sleep");
+    WiFi.disconnect(true);
+
+    LI("entering deep sleep");
+    esp_deep_sleep(c::DEEP_SLEEP_USEC);
 }
 
 void setup() {
@@ -41,16 +58,14 @@ void setup() {
 
     rd::cpu_starts++;
 
-    if (rd::ts_start.tm_mon == 0) {
+    if (rd::ts_start == 0) {
         onBoot();
     } else {
         onWake();
     }
 
-    WiFi.disconnect(true);
-    esp_deep_sleep(c::DEEP_SLEEP_USEC);
+    deepSleep();
 }
 
-void loop() {
-}
+void loop() {}
 

@@ -15,6 +15,8 @@ namespace addr {
     const char* time1 = "time1.google.com";
     const char* time2 = "time2.google.com";
     const char* time3 = "time3.google.com";
+
+    const char* google_mqtt = "mqtt.2030.ltsapis.goog";
 }
 
 #endif //GATE_SENSOR_ADDR_H

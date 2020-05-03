@@ -59,7 +59,7 @@ const char *pathToFileName(const char *path);
 int log_printf(const char *fmt, ...);
 
 #define MYLOG_SHORT_LOG_FORMAT(letter, format) MYLOG_LOG_COLOR_##letter format MYLOG_LOG_RESET_COLOR "\r\n"
-#define MYLOG_LOG_FORMAT(letter, format) MYLOG_LOG_COLOR_##letter "[" #letter "][%s:%u]%-8u|%s(): " format MYLOG_LOG_RESET_COLOR "\r\n", pathToFileName(__FILE__), __LINE__, millis(), __FUNCTION__
+#define MYLOG_LOG_FORMAT(letter, format) MYLOG_LOG_COLOR_##letter "[" #letter "][%s:%u]%u|%s(): " format MYLOG_LOG_RESET_COLOR "\r\n", pathToFileName(__FILE__), __LINE__, millis(), __FUNCTION__
 
 #if MYLOG_LOG_LEVEL >= MYLOG_LOG_LEVEL_VERBOSE
 #define myLog_v(format, ...) log_printf(MYLOG_LOG_FORMAT(V, format), ##__VA_ARGS__)

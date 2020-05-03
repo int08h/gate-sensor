@@ -6,32 +6,33 @@
 #include "constants.h"
 #include "mlog.h"
 
-boolean waitForWifi() {
+void waitForWifi() {
     uint32_t attempt = 1;
 
-    while (!WiFi.isConnected() && attempt < c::MAX_WIFI_ATTEMPTS) {
-        LI("wifi connect attempt %2d/%d", attempt, c::MAX_WIFI_ATTEMPTS);
+    while (!WiFi.isConnected() && attempt < c::WIFI_MAX_ATTEMPTS) {
+        LI("wifi connect attempt %2d/%d", attempt, c::WIFI_MAX_ATTEMPTS);
         delay(250);
         attempt++;
     }
-
-    return WiFi.isConnected();
 }
 
-void connectWifi() {
-    const char *ssid = "-iot";
-    const char *pass = "iot!";
+boolean connectWifi() {
+    const char *ssid = "channing-iot";
+    const char *pass = "welcome to iot!";
 
     WiFi.config(addr::local, addr::gw, addr::subnet, addr::dns1, addr::dns2);
     WiFi.begin(ssid, pass);
-    LI("wifi connect ssid '%s', rssi %d, bssid %s",
-       WiFi.SSID().c_str(), WiFi.RSSI(), WiFi.BSSIDstr().c_str());
 
-    if (!waitForWifi()) {
-        LE("wifi failed to start");
-        return;
+    waitForWifi();
+
+    if (!WiFi.isConnected()) {
+        LE("wifi connect failed");
+        return false;
     }
-}
 
+    LI("wifi connected ssid '%s', rssi %d, bssid %s",
+       WiFi.SSID().c_str(), WiFi.RSSI(), WiFi.BSSIDstr().c_str());
+    return true;
+}
 
 #endif //GATE_SENSOR_WIFI_UTIL_H

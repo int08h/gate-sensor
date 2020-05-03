@@ -6,16 +6,29 @@
 #include "mlog.h"
 #include "constants.h"
 
-void updateTime(tm* dst) {
+time_t pollTime() {
     configTime(0, 0, addr::time3, addr::time2, addr::time1);
-    if (!getLocalTime(dst, /*timeout ms*/ c::MAX_NTP_WAIT_MILLIS)) {
-        LE("failed to obtain time");
+
+    time_t now = 0;
+    uint64_t deadline = millis() + c::NTP_MAX_WAIT_MILLIS;
+
+    while (millis() < deadline) {
+        time(&now);
+        if (now > 0) {
+            break;
+        }
+        delay(25);
     }
+
+    return now;
 }
 
-String timeStr(const tm& now) {
+String timeStr(time_t now) {
     char buf[32] = {};
-    strftime(buf, sizeof(buf), c::TIME_FMT, &now);
+
+    tm *ts = localtime(&now);
+    strftime(buf, sizeof(buf), c::TIME_FMT, ts);
+
     return String(buf);
 }
 
