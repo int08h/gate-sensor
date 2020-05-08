@@ -23,13 +23,14 @@ public:
     }
 
     void regenerate(time_t now) {
-        LI("JWT regenerate");
+        auto start = millis();
+        LI("JWT generate start");
 
         iat = now;
         exp = now + c::JWT_VALID_SEC;
 
         char claims[64];
-        snprintf(claims, sizeof(claims), c::JWT_CLAIMS_FMT, iat, exp, c::JWT_PROJECT);
+        snprintf(claims, sizeof(claims), c::JWT_CLAIMS_FMT, iat, exp, c::GCP_PROJECT);
         LI("JWT claims : %s", claims);
 
         char claims_b64[96];
@@ -37,18 +38,26 @@ public:
 
         String newJwt = String{};
         newJwt.reserve(512);
-        newJwt += c::JWT_RSA_HEADER_b64;
+        newJwt += c::JWT_EC_HEADER_B64;
         newJwt += claims_b64;
 
-        Signer mbed{};
-        mbed.sign(newJwt);
+        Signer signer{keys::ec_device_key};
+        signer.sign(newJwt);
 
         jwt.fill(0);
         memcpy(jwt.data(), newJwt.c_str(), newJwt.length());
+
+        auto elapsed = millis() - start;
+        LI("JWT generate finish; %u ms", elapsed);
+        LI("JWT = %s", jwt.data());
     }
 
-    String value() {
-        return String(jwt.data());
+    const char* value() {
+        return jwt.data();
+    }
+
+    String asHeader() {
+        return String("Bearer ") + jwt.data();
     }
 
 private:

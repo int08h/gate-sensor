@@ -19,7 +19,8 @@
 
 class Signer {
 public:
-    Signer() {
+    explicit Signer(const char *device_key)
+            : device_key(device_key), entropy_ctx(), ctr_drbg_ctx(), pk_ctx() {
         mbedtls_entropy_init(&entropy_ctx);
         mbedtls_ctr_drbg_init(&ctr_drbg_ctx);
         mbedtls_pk_init(&pk_ctx);
@@ -35,9 +36,10 @@ public:
     }
 
     Signer(const Signer &) = delete;
+
     Signer &operator=(const Signer &) = delete;
 
-    void sign(String& content) {
+    void sign(String &content) {
         unsigned char digest[32];
         const mbedtls_md_info_t *md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
         int rc = mbedtls_md(
@@ -54,6 +56,7 @@ public:
         }
 
         unsigned char sig_buf[512];
+        memset(sig_buf, 0, sizeof(sig_buf));
         size_t sig_size;
         rc = mbedtls_pk_sign(
                 &pk_ctx,
@@ -74,6 +77,7 @@ public:
         }
 
         char sig_b64[768];
+        memset(sig_b64, 0, sizeof(sig_b64));
         base64url_encode(sig_buf, sig_size, sig_b64);
 
         content += ".";
@@ -102,8 +106,8 @@ public:
     void loadPrivateKey() {
         int rc = mbedtls_pk_parse_key(
                 &pk_ctx,
-                (unsigned char *) keys::rsa_device_key,
-                strlen(keys::rsa_device_key) + 1,
+                (unsigned char *) device_key,
+                strlen(device_key) + 1,
                 nullptr,
                 0
         );
@@ -120,9 +124,11 @@ public:
     }
 
 private:
-    mbedtls_entropy_context entropy_ctx{};
-    mbedtls_ctr_drbg_context ctr_drbg_ctx{};
-    mbedtls_pk_context pk_ctx{};
+    const char *device_key;
+
+    mbedtls_entropy_context entropy_ctx;
+    mbedtls_ctr_drbg_context ctr_drbg_ctx;
+    mbedtls_pk_context pk_ctx;
 };
 
 

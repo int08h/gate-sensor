@@ -2,7 +2,7 @@
 #define GATE_SENSOR_WIFI_UTIL_H
 
 #include <Arduino.h>
-#include "WiFi.h"
+#include "WiFiClientSecure.h"
 #include "constants.h"
 #include "mlog.h"
 
@@ -20,7 +20,7 @@ boolean connectWifi() {
     const char *ssid = "channing-iot";
     const char *pass = "welcome to iot!";
 
-    WiFi.config(addr::local, addr::gw, addr::subnet, addr::dns1, addr::dns2);
+    WiFi.config(addr::LOCAL, addr::GW, addr::SUBNET, addr::DNS1, addr::DNS2);
     WiFi.begin(ssid, pass);
 
     waitForWifi();

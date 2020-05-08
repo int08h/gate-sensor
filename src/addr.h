@@ -5,18 +5,23 @@
 #include <IPAddress.h>
 
 namespace addr {
-    IPAddress gw = IPAddress(192, 168, 1, 1);
-    IPAddress local = IPAddress(192, 168, 1, 230);
-    IPAddress subnet = IPAddress(255, 255, 255, 0);
+    IPAddress GW = IPAddress(192, 168, 1, 1);
+    IPAddress LOCAL = IPAddress(192, 168, 1, 230);
+    IPAddress SUBNET = IPAddress(255, 255, 255, 0);
 
-    IPAddress dns1 = IPAddress(8, 8, 8, 8);
-    IPAddress dns2 = IPAddress(1, 1, 1, 1);
+    IPAddress DNS1 = IPAddress(8, 8, 8, 8);
+    IPAddress DNS2 = IPAddress(1, 1, 1, 1);
 
-    const char* time1 = "time1.google.com";
-    const char* time2 = "time2.google.com";
-    const char* time3 = "time3.google.com";
+    const char *TIME1 = "time1.google.com";
+    const char *TIME2 = "time2.google.com";
+    const char *TIME3 = "time3.google.com";
 
-    const char* google_mqtt = "mqtt.2030.ltsapis.goog";
+    // mqtt.2030.ltsapis.goog
+    const char *GOOGLE_HOST = "mqtt.2030.ltsapis.goog";
+    IPAddress GOOGLE_MQTT = IPAddress(74, 125, 69, 206);
+
+    const char *PO_HOST = "api.pushover.net";
+    const char *PO_URL = "https://api.pushover.net/1/messages.json";
 }
 
 #endif //GATE_SENSOR_ADDR_H
