@@ -12,27 +12,47 @@
 
 #include "mlog.h"
 #include "rtc_data.h"
-#include "time_util.h"
-#include "wifi_util.h"
+#include "net_util.h"
 
 using rd::jwt;
 
-void dumpResponse(WiFiClientSecure &client) {
-    while (client.available()) {
-        char c = client.read();
-        Serial.print(c);
+void handleBoot();
+void handleWakeup();
+void enterDeepSleep();
+bool isInitialBoot();
+bool sendIotTelemetry(WiFiClientSecure &client, time_t now);
+bool sendPushoverEvent(WiFiClientSecure &client);
+
+// Program always starts (and ends) here; loop() is never used.
+void setup() {
+    esp_log_level_set("*", ESP_LOG_VERBOSE);
+    Serial.begin(115200);
+
+    rd::cpu_starts++;
+
+    if (isInitialBoot()) {
+        handleBoot();
+    } else {
+        handleWakeup();
     }
-    Serial.flush();
+
+    enterDeepSleep();
 }
 
-void onBoot() {
-    LI("boot");
+__unused void loop() {}
+
+bool isInitialBoot() {
+    return rd::ts_start == 0;
+}
+
+void handleBoot() {
+    LI("initial boot");
 
     if (!connectWifi()) {
         return;
     }
 
-    time_t now = pollTime();
+    time_t now = setTime();
     rd::ts_start = now;
     rd::ts_current = now;
     LI("NTP time %s", timeStr(rd::ts_start).c_str());
@@ -42,7 +62,41 @@ void onBoot() {
     }
 }
 
-void sendTelemetry(time_t now, WiFiClientSecure& client) {
+void handleWakeup() {
+    LI("wakeup");
+
+    if (!connectWifi()) {
+        return;
+    }
+
+    time_t now = setTime();
+    time_t ts_prev = rd::ts_current;
+    rd::ts_current = now;
+    LI("starts %llu, last wake %s, now %s",
+       rd::cpu_starts, timeStr(ts_prev).c_str(), timeStr(rd::ts_current).c_str());
+
+    if (jwt.isExpired(now)) {
+        jwt.regenerate(now);
+    }
+
+    WiFiClientSecure client = WiFiClientSecure();
+    client.setTimeout(/*secs*/10);
+
+    sendIotTelemetry(client, now);
+//    sendPushoverEvent(client);
+
+    client.stop();
+}
+
+void enterDeepSleep() {
+    LI("preparing for deep sleep");
+    WiFi.disconnect(true);
+
+    LI("entering deep sleep");
+    esp_deep_sleep(c::DEEP_SLEEP_USEC);
+}
+
+bool sendIotTelemetry(WiFiClientSecure &client, time_t now) {
     client.setCACert(keys::google_root_bundle);
 
     HTTPClient req;
@@ -58,20 +112,22 @@ void sendTelemetry(time_t now, WiFiClientSecure& client) {
     snprintf(ptmp, sizeof(ptmp), c::GCP_STATE_FMT, now, WiFi.RSSI(), 0, rd::sent_events,
              rd::sent_telemetry, rd::cpu_starts, rd::ulp_sensor_checks);
     char b64tmp[512];
-    base64url_encode((unsigned char*)ptmp, strlen(ptmp), b64tmp);
+    base64url_encode((unsigned char *) ptmp, strlen(ptmp), b64tmp);
 
     String payload = String("{\"binary_data\":\"") + b64tmp + "\"}";
 
-    int code = req.POST(String(payload));
+    int code = req.POST(payload);
     rd::sent_telemetry++;
     LI("POST to google compete, code = %d", code);
 
     if (code != 200) {
         dumpResponse(client);
     }
+
+    return code == 200;
 }
 
-void sendToPushover(WiFiClientSecure &client) {
+bool sendPushoverEvent(WiFiClientSecure &client) {
     client.setCACert(keys::digicert_ca);
 
     HTTPClient req;
@@ -79,6 +135,7 @@ void sendToPushover(WiFiClientSecure &client) {
 
     req.begin(client, addr::PO_URL);
     req.addHeader("Content-Type", "application/x-www-form-urlencoded");
+    req.addHeader("Cache-Control", "no-cache");
 
     String payload = String("message=") + String(c::DEVICE_ID_HUMAN) + " has been opened.";
     payload.replace(' ', '+');
@@ -97,56 +154,8 @@ void sendToPushover(WiFiClientSecure &client) {
     if (code != 200) {
         dumpResponse(client);
     }
+
+    return code == 200;
 }
 
-void onWake() {
-    LI("wake");
-
-    if (!connectWifi()) {
-        return;
-    }
-
-    time_t now = pollTime();
-    time_t ts_prev = rd::ts_current;
-    rd::ts_current = now;
-    LI("starts %llu, last wake %s, now %s",
-       rd::cpu_starts, timeStr(ts_prev).c_str(), timeStr(rd::ts_current).c_str());
-
-    if (jwt.isExpired(now)) {
-        jwt.regenerate(now);
-    }
-
-    WiFiClientSecure client = WiFiClientSecure();
-    client.setTimeout(/*secs*/15);
-
-    sendTelemetry(now, client);
-    sendToPushover(client);
-
-    client.stop();
-}
-
-void deepSleep() {
-    LI("preparing for deep sleep");
-    WiFi.disconnect(true);
-
-    LI("entering deep sleep");
-    esp_deep_sleep(c::DEEP_SLEEP_USEC);
-}
-
-void setup() {
-    esp_log_level_set("*", ESP_LOG_VERBOSE);
-    Serial.begin(115200);
-
-    rd::cpu_starts++;
-
-    if (rd::ts_start == 0) {
-        onBoot();
-    } else {
-        onWake();
-    }
-
-    deepSleep();
-}
-
-void loop() {}
 

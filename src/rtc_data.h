@@ -7,7 +7,8 @@
 #include <ctime>
 #include "jwt.h"
 
-// Metrics and counters stored in the RTC slow data section
+// Metrics and counters stored in the RTC slow data section that are
+// accessible by the ULP and retain their value across CPU restarts
 namespace rd {
     RTC_DATA_ATTR static uint32_t sent_events = 0;
     RTC_DATA_ATTR static uint32_t sent_telemetry = 0;
