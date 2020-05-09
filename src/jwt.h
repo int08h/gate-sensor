@@ -38,10 +38,10 @@ public:
 
         String newJwt = String{};
         newJwt.reserve(512);
-        newJwt += c::JWT_EC_HEADER_B64;
+        newJwt += c::JWT_RSA_HEADER_B64;
         newJwt += claims_b64;
 
-        Signer signer{keys::ec_device_key};
+        Signer signer{keys::rsa_device_key};
         signer.sign(newJwt);
 
         jwt.fill(0);

@@ -7,7 +7,6 @@
  */
 
 #include <HTTPClient.h>
-#include <PubSubClient.h>
 #include "Arduino.h"
 #include "WiFiClientSecure.h"
 
@@ -17,6 +16,14 @@
 #include "wifi_util.h"
 
 using rd::jwt;
+
+void dumpResponse(WiFiClientSecure &client) {
+    while (client.available()) {
+        char c = client.read();
+        Serial.print(c);
+    }
+    Serial.flush();
+}
 
 void onBoot() {
     LI("boot");
@@ -34,14 +41,62 @@ void onBoot() {
         jwt.regenerate(now);
     }
 }
-void callback(char* topic, byte* payload, unsigned int length) {
-    Serial.print("Message arrived [");
-    Serial.print(topic);
-    Serial.print("] ");
-    for (int i=0;i<length;i++) {
-        Serial.print((char)payload[i]);
+
+void sendTelemetry(time_t now, WiFiClientSecure& client) {
+    client.setCACert(keys::google_root_bundle);
+
+    HTTPClient req;
+    req.setConnectTimeout(/*ms*/10 * 1000);
+
+    String url = String(addr::GOOGLE_IOT_URL) + String(c::DEVICE_ID_GOOGLE) + ":publishEvent";
+    req.begin(client, url);
+    req.addHeader("Authorization", jwt.asHeader());
+    req.addHeader("Content-Type", "application/json");
+    req.addHeader("Cache-Control", "no-cache");
+
+    char ptmp[256];
+    snprintf(ptmp, sizeof(ptmp), c::GCP_STATE_FMT, now, WiFi.RSSI(), 0, rd::sent_events,
+             rd::sent_telemetry, rd::cpu_starts, rd::ulp_sensor_checks);
+    char b64tmp[512];
+    base64url_encode((unsigned char*)ptmp, strlen(ptmp), b64tmp);
+
+    String payload = String("{\"binary_data\":\"") + b64tmp + "\"}";
+
+    int code = req.POST(String(payload));
+    rd::sent_telemetry++;
+    LI("POST to google compete, code = %d", code);
+
+    if (code != 200) {
+        dumpResponse(client);
     }
-    Serial.println();
+}
+
+void sendToPushover(WiFiClientSecure &client) {
+    client.setCACert(keys::digicert_ca);
+
+    HTTPClient req;
+    req.setConnectTimeout(/*ms*/10 * 1000);
+
+    req.begin(client, addr::PO_URL);
+    req.addHeader("Content-Type", "application/x-www-form-urlencoded");
+
+    String payload = String("message=") + String(c::DEVICE_ID_HUMAN) + " has been opened.";
+    payload.replace(' ', '+');
+
+    payload += "&token=";
+    payload += keys::po_token;
+    payload += "&user=";
+    payload += keys::po_user;
+    payload += "&device=";
+    payload += c::DEVICE_ID_PO;
+
+    int code = req.POST(payload);
+    rd::sent_events++;
+    LI("Pushover request response %d", code);
+
+    if (code != 200) {
+        dumpResponse(client);
+    }
 }
 
 void onWake() {
@@ -62,51 +117,12 @@ void onWake() {
     }
 
     WiFiClientSecure client = WiFiClientSecure();
-    client.setCACert(keys::google_bundle);
     client.setTimeout(/*secs*/15);
-    client.connect(addr::GOOGLE_HOST, 443);
 
-    PubSubClient pubsub{addr::GOOGLE_HOST, 443, client};
-    pubsub.setCallback(callback);
-
-    const char* devid = "projects/int08h-blog/locations/us-central1/registries/home-automation/devices/sensor-dev-1";
-    if (!pubsub.connect(devid, "unused", jwt.value())) {
-        LE("connect fail: %d", pubsub.state());
-        return;
-    }
-    LI("connect completed");
-
-    String payload = String("{\"timestamp\":") + now + "}";
-    LI("payload = %s", payload.c_str());
-    
-    if (!pubsub.publish("/devices/sensor-dev-1/state", payload.c_str())) {
-        LE("publish failed");
-        return;
-    }
-    LI("publish sent");
-    pubsub.disconnect();
-    LI("disconnect");
+    sendTelemetry(now, client);
+    sendToPushover(client);
 
     client.stop();
-}
-
-void sendToPushover() {
-    HTTPClient req;
-    req.setConnectTimeout(/*ms*/10 * 1000);
-
-    req.begin(addr::PO_URL);
-    req.addHeader("Host", "api.pushover.net");
-    req.addHeader("Content-Type", "application/x-www-form-urlencoded");
-
-    String payload = String("message=This+is+a+test+2");
-    payload += "&token=";
-    payload += keys::po_token;
-    payload += "&user=";
-    payload += keys::po_user;
-    payload += "&device=sensor-dev";
-
-    int code = req.POST(payload);
-    LI("HTTP request response %d", code);
 }
 
 void deepSleep() {

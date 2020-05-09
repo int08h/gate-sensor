@@ -16,11 +16,8 @@ namespace addr {
     const char *TIME2 = "time2.google.com";
     const char *TIME3 = "time3.google.com";
 
-    // mqtt.2030.ltsapis.goog
-    const char *GOOGLE_HOST = "mqtt.2030.ltsapis.goog";
-    IPAddress GOOGLE_MQTT = IPAddress(74, 125, 69, 206);
+    const char *GOOGLE_IOT_URL = "https://cloudiotdevice.googleapis.com/v1/projects/int08h-blog/locations/us-central1/registries/home-automation/devices/";
 
-    const char *PO_HOST = "api.pushover.net";
     const char *PO_URL = "https://api.pushover.net/1/messages.json";
 }
 
