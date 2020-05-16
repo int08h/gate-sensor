@@ -6,8 +6,8 @@
  * Apache 2.0 licensed https://www.apache.org/licenses/LICENSE-2.0
  */
 
-#include <HTTPClient.h>
 #include "Arduino.h"
+#include "HTTPClient.h"
 #include "WiFiClientSecure.h"
 
 #include <driver/adc.h>
@@ -15,33 +15,33 @@
 #include <soc/rtc.h>
 
 #include "mlog.h"
-#include "rtc_data.h"
 #include "net_util.h"
+#include "rtc_data.h"
 
+bool isInitialBoot();
 void handleBoot();
 void handleWakeup();
-void enterDeepSleep();
-bool isInitialBoot();
-bool sendIotTelemetry(WiFiClientSecure &client, time_t now);
-bool sendPushoverEvent(WiFiClientSecure &client);
+void handleGateChange(GateState state);
+void handleSendTelemetry();
+void enterDeepSleep(uint32_t duration_usec);
+bool sendIotTelemetry(WiFiClientSecure &client);
+bool sendPushoverEvent(WiFiClientSecure &client, GateState state);
+const char *wake_reason();
 
 // Program always starts (and ends) here; loop() is never used.
 void setup() {
-//    esp_log_level_set("*", ESP_LOG_VERBOSE);
-    Serial.begin(115200);
-
+    rtcd::ts_wake = time(nullptr);
     rtcd::cpu_wakeups++;
+
+    Serial.begin(115200);
 
     if (isInitialBoot()) {
         handleBoot();
-    } else {
-        handleWakeup();
     }
 
-    enterDeepSleep();
+    handleWakeup();
+    enterDeepSleep(c::DEEP_SLEEP_USEC);
 }
-
-__unused void loop() {}
 
 bool isInitialBoot() {
     return rtcd::ts_boot == 0;
@@ -56,29 +56,59 @@ void handleBoot() {
 
     time_t now = setNtpTime();
     rtcd::ts_boot = now;
+    rtcd::ts_wake = now;
+    rtcd::ts_next_telemetry = now + 1;
 
-    if (rtcd::jwt.isExpired(now)) {
-        rtcd::jwt.regenerate(now);
-    }
-
-    rtcd::ts_next_telemetry = now + c::TELEMETRY_SEND_SEC;
+    Gate gate{};
+    rtcd::last_state = gate.measure();
 }
 
 void handleWakeup() {
-    LI("wakeup");
+    time_t sleep_dur = rtcd::ts_wake - rtcd::ts_start_sleep;
+    LI("wake %llu; slept %d sec (reason: %s)", rtcd::cpu_wakeups, sleep_dur, wake_reason());
 
     Gate gate{};
-    SensorReading reading = gate.measure();
-    if (reading == CLOSED) {
+    GateState curr_state = gate.measure();
 
+    if (curr_state != rtcd::last_state) {
+        LI("Gate change %s -> %s", gate.to_str(rtcd::last_state), gate.to_str(curr_state));
+        rtcd::last_state = curr_state;
+        handleGateChange(curr_state);
+    } else {
+        LI("Gate remains %s", gate.to_str(curr_state));
     }
 
+    time_t now = time(nullptr);
+    if (now > rtcd::ts_next_telemetry) {
+        LI("Deadline to send telemetry (now %s > %s)",
+           timeStr(now).c_str(), timeStr(rtcd::ts_next_telemetry).c_str());
+        rtcd::ts_next_telemetry = now + c::TELEMETRY_SEND_SEC;
+        handleSendTelemetry();
+    }
+}
+
+void handleGateChange(GateState state) {
     if (!connectWifi()) {
         return;
     }
 
     time_t now = setNtpTime();
-    LI("last wake %s, now %s", timeStr(rtcd::ts_start_sleep).c_str(), timeStr(now).c_str());
+    LI("Sending Pushover event %s at %s", Gate::to_str(state), timeStr(now).c_str());
+
+    WiFiClientSecure client = WiFiClientSecure();
+    client.setTimeout(/*secs*/10);
+
+    sendPushoverEvent(client, state);
+
+    client.stop();
+}
+
+void handleSendTelemetry() {
+    if (!connectWifi()) {
+        return;
+    }
+
+    time_t now = setNtpTime();
 
     if (rtcd::jwt.isExpired(now)) {
         rtcd::jwt.regenerate(now);
@@ -87,43 +117,13 @@ void handleWakeup() {
     WiFiClientSecure client = WiFiClientSecure();
     client.setTimeout(/*secs*/10);
 
-    if (now > rtcd::ts_next_telemetry) {
-        LI("Sending telemetry (%s > %s)",
-                timeStr(now).c_str(), timeStr(rtcd::ts_next_telemetry).c_str());
-        sendIotTelemetry(client, now);
-        rtcd::ts_next_telemetry = now + c::TELEMETRY_SEND_SEC;
-    }
-//    sendPushoverEvent(client);
+    sendIotTelemetry(client);
 
     client.stop();
 }
 
-void enterDeepSleep() {
-    LI("preparing for deep sleep");
-    WiFi.disconnect(true);
-
-    // Suppress boot messages
-    esp_deep_sleep_disable_rom_logging();
-
-    // Prevent current drain from internal pull ups on flash controller
-    rtc_gpio_isolate(GPIO_NUM_12);
-    rtc_gpio_isolate(GPIO_NUM_15);
-
-    // Prepare ADC1 to be read by ULP
-    // GPIO33 is ADC1_CH5, 0 = gate closed, 4095 = gate open
-    adc1_config_channel_atten(ADC1_CHANNEL_5, ADC_ATTEN_DB_11);
-    adc1_config_width(ADC_WIDTH_BIT_12);
-    adc1_ulp_enable();
-
-    LI("entering deep sleep");
-    // todo: start ULP program - ulp_run()
-    ESP_ERROR_CHECK( esp_sleep_enable_ulp_wakeup() );
-    time(&rtcd::ts_start_sleep);
-    esp_deep_sleep(c::DEEP_SLEEP_USEC);
-}
-
 // Send telemetry to GCP IoT Core
-bool sendIotTelemetry(WiFiClientSecure &client, time_t now) {
+bool sendIotTelemetry(WiFiClientSecure &client) {
     client.setCACert(keys::google_root_bundle);
 
     HTTPClient req;
@@ -135,9 +135,10 @@ bool sendIotTelemetry(WiFiClientSecure &client, time_t now) {
     req.addHeader("Content-Type", "application/json");
     req.addHeader("Cache-Control", "no-cache");
 
+    time_t now = time(nullptr);
     char ptmp[256];
-    snprintf(ptmp, sizeof(ptmp), c::GCP_STATE_FMT, now, WiFi.RSSI(), 0, rtcd::sent_events,
-             rtcd::sent_telemetry, rtcd::cpu_wakeups, rtcd::ulp_sensor_checks);
+    snprintf(ptmp, sizeof(ptmp), c::GCP_STATE_FMT, now, WiFi.RSSI(), rtcd::last_state,
+             rtcd::sent_events, rtcd::sent_telemetry, rtcd::cpu_wakeups, rtcd::ulp_sensor_checks);
     char b64tmp[512];
     base64url_encode((unsigned char *) ptmp, strlen(ptmp), b64tmp);
 
@@ -155,7 +156,7 @@ bool sendIotTelemetry(WiFiClientSecure &client, time_t now) {
 }
 
 // Send mobile alert to Pushover
-bool sendPushoverEvent(WiFiClientSecure &client) {
+bool sendPushoverEvent(WiFiClientSecure &client, GateState state) {
     client.setCACert(keys::digicert_ca);
 
     HTTPClient req;
@@ -165,7 +166,11 @@ bool sendPushoverEvent(WiFiClientSecure &client) {
     req.addHeader("Content-Type", "application/x-www-form-urlencoded");
     req.addHeader("Cache-Control", "no-cache");
 
-    String payload = String("message=") + String(c::DEVICE_ID_HUMAN) + " has been opened.";
+    String payload = String("message=")
+                     + String(c::DEVICE_ID_HUMAN)
+                     + " is now "
+                     + Gate::to_str(state);
+
     payload.replace(' ', '+');
 
     payload += "&token=";
@@ -186,4 +191,55 @@ bool sendPushoverEvent(WiFiClientSecure &client) {
     return code == 200;
 }
 
+void enterDeepSleep(uint32_t duration_usec) {
+    LI("preparing for %d us deep sleep", duration_usec);
+    WiFi.disconnect(true);
 
+    // Suppress boot messages
+    esp_deep_sleep_disable_rom_logging();
+
+    // Prevent current drain from internal pull up on flash controller
+    rtc_gpio_isolate(GPIO_NUM_12);
+
+    // Prepare ADC1 to be read by ULP
+    // GPIO33 is ADC1_CH5, 0 = gate closed, 4095 = gate open
+    adc1_config_channel_atten(ADC1_CHANNEL_5, ADC_ATTEN_DB_11);
+    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_ulp_enable();
+
+    LI("entering deep sleep");
+    // todo: start ULP program - ulp_run()
+    ESP_ERROR_CHECK(esp_sleep_enable_ulp_wakeup());
+    time(&rtcd::ts_start_sleep);
+    esp_deep_sleep(duration_usec);
+}
+
+const char *wake_reason() {
+    switch (esp_reset_reason()) {
+        case ESP_RST_POWERON:
+            return "Reset due to power-on event";
+        case ESP_RST_EXT:
+            return "Reset by external pin";
+        case ESP_RST_SW:
+            return "Software reset via esp_restart";
+        case ESP_RST_PANIC:
+            return "Software reset due to exception/panic";
+        case ESP_RST_INT_WDT:
+            return "Reset (software or hardware) due to interrupt watchdog";
+        case ESP_RST_TASK_WDT:
+            return "Reset due to task watchdog";
+        case ESP_RST_WDT:
+            return "Reset due to other watchdogs";
+        case ESP_RST_DEEPSLEEP:
+            return "Reset after exiting deep sleep mode";
+        case ESP_RST_BROWNOUT:
+            return "Brownout reset (software or hardware)";
+        case ESP_RST_SDIO:
+            return "Reset over SDIO";
+        case ESP_RST_UNKNOWN:
+        default:
+            return "Reset reason can not be determined";
+    }
+}
+
+__unused void loop() {}

@@ -3,19 +3,11 @@
 
 #include <driver/adc.h>
 
-enum SensorReading {
+enum GateState {
     UNKNOWN = 0,
     CLOSED = 1,
     OPEN = 2
 };
-
-// unknown --> closed --> triggered
-//    |          ^           |
-//    |          |           v
-//    |          +------- disarmed
-//    |                      ^
-//    |                      |
-//    +----------------------+
 
 class Gate {
 public:
@@ -25,7 +17,7 @@ public:
         adc1_config_width(ADC_WIDTH_BIT_12);
     }
 
-    SensorReading measure() {
+    GateState measure() const {
         int value = adc1_get_raw(ADC1_CHANNEL_5);
 
         if (value < threshold_low) {
@@ -37,9 +29,21 @@ public:
         }
     }
 
+    static const char* to_str(GateState state) {
+        switch (state) {
+            case OPEN:
+                return "OPEN";
+            case CLOSED:
+                return "CLOSED";
+            case UNKNOWN:
+            default:
+                return "UNKNOWN";
+        }
+    }
+
 private:
-    const int threshold_low = 100;
-    const int threshold_high = 4000;
+    const int threshold_low = 200;
+    const int threshold_high = 3000;
 };
 
 #endif //GATE_SENSOR_GATE_H

@@ -28,6 +28,10 @@ void waitForWifi() {
 }
 
 boolean connectWifi() {
+    if (WiFi.isConnected()) {
+        return true;
+    }
+
     const char *ssid = "channing-iot";
     const char *pass = "welcome to iot!";
 
@@ -53,7 +57,7 @@ time_t pollTime() {
     uint64_t deadline = millis() + c::NTP_MAX_WAIT_MILLIS;
 
     while (millis() < deadline) {
-        time(&now);
+        now = time(nullptr);
         if (now > c::TIME_MIN_EPOCH) {
             // set clock; arduino esp-idf 3.x doesn't have SNTP mode immediate
             timeval tv{};
@@ -71,12 +75,17 @@ time_t pollTime() {
 }
 
 time_t setNtpTime() {
-    uint32_t attempt = 1;
+    time_t now;
+    time_t prev_time;
 
+    prev_time = time(nullptr);
+
+    uint32_t attempt = 1;
     while (attempt < c::NTP_MAX_ATTEMPTS) {
         LI("NTP attempt %d/%d", attempt, c::NTP_MAX_ATTEMPTS);
-        time_t now = pollTime();
+        now = pollTime();
         if (now > c::TIME_MIN_EPOCH) {
+            LI("Clock diff %ld seconds", now - prev_time);
             return now;
         }
         attempt++;

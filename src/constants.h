@@ -44,7 +44,7 @@ namespace c {
     const char *GCP_PROJECT = "int08h-blog";
 
     // GCP IoT telemetry format
-    const char *GCP_STATE_FMT = R"({"ts":%u,"rssi":%d,"bat":%u,"evt":%u,"tmt":%u,"cpu":"%llu","ulp":"%llu"})";
+    const char *GCP_STATE_FMT = R"({"ts":%u,"rssi":%d,"g":%u,"evt":%u,"tmt":%u,"cpu":"%llu","ulp":"%llu"})";
 }
 
 #endif //GATE_SENSOR_CONSTANTS_H
