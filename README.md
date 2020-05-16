@@ -38,11 +38,16 @@ Out of the box 17uA quiescent power consumption. WROOM-32 based board just like 
   potentially waking device. 
 * Increase DTIM period.
  
-## TODO: Compare on-board Hall effect sensor to external US5881
+## On-board Hall effect sensor compared to external sensor (Melexis US5881)
 
-TODO: ESP32's on-board Hall effect sensor does not seem that sensitive. Need to compare to external
-[Melexis US5881](https://www.melexis.com/en/product/US5881/Unipolar-Hall-Effect-Switch-Low-Sensitivity) 
-(and potentially medium- or high-sensitivity versions of same part).
+ESP32's on-board Hall effect sensor calibration varies between chips, is not that sensitive, 
+and is fairly noisy. The [Melexis US5881](https://www.melexis.com/en/product/US5881/Unipolar-Hall-Effect-Switch-Low-Sensitivity) 
+is a great replacement. It reads as Vgnd/0 V when the south pole is present (0 from the ADC) and 
+Vdd/3.3 V when "open" (4095 in the ADC). No noise, just a binary open/closed.
+
+## Lower power ESP32
+
+* Disable GPIO pins 12 and 15 
 
 # Copyright and license
 

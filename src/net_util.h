@@ -8,6 +8,15 @@
 #include "constants.h"
 #include "lwip/apps/sntp.h"
 
+String timeStr(time_t now) {
+    char buf[32] = {};
+
+    tm *ts = localtime(&now);
+    strftime(buf, sizeof(buf), c::TIME_FMT, ts);
+
+    return String(buf);
+}
+
 void waitForWifi() {
     uint32_t attempt = 1;
 
@@ -57,11 +66,11 @@ time_t pollTime() {
         }
         delay(25);
     }
-
+    LI("NTP time %s", timeStr(now).c_str());
     return now;
 }
 
-time_t setTime() {
+time_t setNtpTime() {
     uint32_t attempt = 1;
 
     while (attempt < c::NTP_MAX_ATTEMPTS) {
@@ -74,15 +83,6 @@ time_t setTime() {
     }
 
     return 0;
-}
-
-String timeStr(time_t now) {
-    char buf[32] = {};
-
-    tm *ts = localtime(&now);
-    strftime(buf, sizeof(buf), c::TIME_FMT, ts);
-
-    return String(buf);
 }
 
 void dumpResponse(WiFiClientSecure &client) {

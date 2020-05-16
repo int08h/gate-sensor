@@ -15,10 +15,13 @@ namespace c {
     const uint32_t DEEP_SLEEP_SEC = 5;
     const uint32_t DEEP_SLEEP_USEC = DEEP_SLEEP_SEC * 1000 * 1000;
 
+    // Interval between sending telemetry to GCP
+    const uint32_t TELEMETRY_SEND_SEC = 30;
+
     // This many tries to get an NTP answer
     const uint32_t NTP_MAX_ATTEMPTS = 3;
     // Wait this long for each NTP response
-    const uint32_t NTP_MAX_WAIT_MILLIS = 3000;
+    const uint32_t NTP_MAX_WAIT_MILLIS = 2000;
 
     // This many attempts to join WiFi
     const uint32_t WIFI_MAX_ATTEMPTS = 10;

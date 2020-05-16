@@ -10,11 +10,13 @@
 #include "Arduino.h"
 #include "WiFiClientSecure.h"
 
+#include <driver/adc.h>
+#include <driver/rtc_io.h>
+#include <soc/rtc.h>
+
 #include "mlog.h"
 #include "rtc_data.h"
 #include "net_util.h"
-
-using rd::jwt;
 
 void handleBoot();
 void handleWakeup();
@@ -25,10 +27,10 @@ bool sendPushoverEvent(WiFiClientSecure &client);
 
 // Program always starts (and ends) here; loop() is never used.
 void setup() {
-    esp_log_level_set("*", ESP_LOG_VERBOSE);
+//    esp_log_level_set("*", ESP_LOG_VERBOSE);
     Serial.begin(115200);
 
-    rd::cpu_starts++;
+    rtcd::cpu_wakeups++;
 
     if (isInitialBoot()) {
         handleBoot();
@@ -42,7 +44,7 @@ void setup() {
 __unused void loop() {}
 
 bool isInitialBoot() {
-    return rd::ts_start == 0;
+    return rtcd::ts_boot == 0;
 }
 
 void handleBoot() {
@@ -52,37 +54,45 @@ void handleBoot() {
         return;
     }
 
-    time_t now = setTime();
-    rd::ts_start = now;
-    rd::ts_current = now;
-    LI("NTP time %s", timeStr(rd::ts_start).c_str());
+    time_t now = setNtpTime();
+    rtcd::ts_boot = now;
 
-    if (jwt.isExpired(now)) {
-        jwt.regenerate(now);
+    if (rtcd::jwt.isExpired(now)) {
+        rtcd::jwt.regenerate(now);
     }
+
+    rtcd::ts_next_telemetry = now + c::TELEMETRY_SEND_SEC;
 }
 
 void handleWakeup() {
     LI("wakeup");
 
+    Gate gate{};
+    SensorReading reading = gate.measure();
+    if (reading == CLOSED) {
+
+    }
+
     if (!connectWifi()) {
         return;
     }
 
-    time_t now = setTime();
-    time_t ts_prev = rd::ts_current;
-    rd::ts_current = now;
-    LI("starts %llu, last wake %s, now %s",
-       rd::cpu_starts, timeStr(ts_prev).c_str(), timeStr(rd::ts_current).c_str());
+    time_t now = setNtpTime();
+    LI("last wake %s, now %s", timeStr(rtcd::ts_start_sleep).c_str(), timeStr(now).c_str());
 
-    if (jwt.isExpired(now)) {
-        jwt.regenerate(now);
+    if (rtcd::jwt.isExpired(now)) {
+        rtcd::jwt.regenerate(now);
     }
 
     WiFiClientSecure client = WiFiClientSecure();
     client.setTimeout(/*secs*/10);
 
-    sendIotTelemetry(client, now);
+    if (now > rtcd::ts_next_telemetry) {
+        LI("Sending telemetry (%s > %s)",
+                timeStr(now).c_str(), timeStr(rtcd::ts_next_telemetry).c_str());
+        sendIotTelemetry(client, now);
+        rtcd::ts_next_telemetry = now + c::TELEMETRY_SEND_SEC;
+    }
 //    sendPushoverEvent(client);
 
     client.stop();
@@ -92,10 +102,27 @@ void enterDeepSleep() {
     LI("preparing for deep sleep");
     WiFi.disconnect(true);
 
+    // Suppress boot messages
+    esp_deep_sleep_disable_rom_logging();
+
+    // Prevent current drain from internal pull ups on flash controller
+    rtc_gpio_isolate(GPIO_NUM_12);
+    rtc_gpio_isolate(GPIO_NUM_15);
+
+    // Prepare ADC1 to be read by ULP
+    // GPIO33 is ADC1_CH5, 0 = gate closed, 4095 = gate open
+    adc1_config_channel_atten(ADC1_CHANNEL_5, ADC_ATTEN_DB_11);
+    adc1_config_width(ADC_WIDTH_BIT_12);
+    adc1_ulp_enable();
+
     LI("entering deep sleep");
+    // todo: start ULP program - ulp_run()
+    ESP_ERROR_CHECK( esp_sleep_enable_ulp_wakeup() );
+    time(&rtcd::ts_start_sleep);
     esp_deep_sleep(c::DEEP_SLEEP_USEC);
 }
 
+// Send telemetry to GCP IoT Core
 bool sendIotTelemetry(WiFiClientSecure &client, time_t now) {
     client.setCACert(keys::google_root_bundle);
 
@@ -104,21 +131,21 @@ bool sendIotTelemetry(WiFiClientSecure &client, time_t now) {
 
     String url = String(addr::GOOGLE_IOT_URL) + String(c::DEVICE_ID_GOOGLE) + ":publishEvent";
     req.begin(client, url);
-    req.addHeader("Authorization", jwt.asHeader());
+    req.addHeader("Authorization", rtcd::jwt.asHeader());
     req.addHeader("Content-Type", "application/json");
     req.addHeader("Cache-Control", "no-cache");
 
     char ptmp[256];
-    snprintf(ptmp, sizeof(ptmp), c::GCP_STATE_FMT, now, WiFi.RSSI(), 0, rd::sent_events,
-             rd::sent_telemetry, rd::cpu_starts, rd::ulp_sensor_checks);
+    snprintf(ptmp, sizeof(ptmp), c::GCP_STATE_FMT, now, WiFi.RSSI(), 0, rtcd::sent_events,
+             rtcd::sent_telemetry, rtcd::cpu_wakeups, rtcd::ulp_sensor_checks);
     char b64tmp[512];
     base64url_encode((unsigned char *) ptmp, strlen(ptmp), b64tmp);
 
     String payload = String("{\"binary_data\":\"") + b64tmp + "\"}";
 
     int code = req.POST(payload);
-    rd::sent_telemetry++;
-    LI("POST to google compete, code = %d", code);
+    rtcd::sent_telemetry++;
+    LI("POST to Google complete, code = %d", code);
 
     if (code != 200) {
         dumpResponse(client);
@@ -127,6 +154,7 @@ bool sendIotTelemetry(WiFiClientSecure &client, time_t now) {
     return code == 200;
 }
 
+// Send mobile alert to Pushover
 bool sendPushoverEvent(WiFiClientSecure &client) {
     client.setCACert(keys::digicert_ca);
 
@@ -148,8 +176,8 @@ bool sendPushoverEvent(WiFiClientSecure &client) {
     payload += c::DEVICE_ID_PO;
 
     int code = req.POST(payload);
-    rd::sent_events++;
-    LI("Pushover request response %d", code);
+    rtcd::sent_events++;
+    LI("POST to Pushover complete, code = %d", code);
 
     if (code != 200) {
         dumpResponse(client);
