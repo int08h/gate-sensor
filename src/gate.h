@@ -20,9 +20,9 @@ public:
     GateState measure() const {
         int value = adc1_get_raw(ADC1_CHANNEL_5);
 
-        if (value < threshold_low) {
+        if (value < THRESHOLD_LOW) {
             return CLOSED;
-        } else if (value > threshold_high) {
+        } else if (value > THRESHOLD_HIGH) {
             return OPEN;
         } else {
             return UNKNOWN;
@@ -42,8 +42,12 @@ public:
     }
 
 private:
-    const int threshold_low = 200;
-    const int threshold_high = 3000;
+    // rarely, but occasionally, the ADC reading from the US5881 will be
+    // above 0 but below 4095 full scale. Sensor is spec'ed min 3.5V but we're
+    // driving it with 3.3V ... also bypass caps are indicated in the datasheet
+    // but those aren't being used here either.
+    static const int THRESHOLD_LOW = 200;
+    static const int THRESHOLD_HIGH = 3000;
 };
 
 #endif //GATE_SENSOR_GATE_H
