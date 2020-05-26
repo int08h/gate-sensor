@@ -19,7 +19,7 @@ SET(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 11)
 
 if (CMAKE_BUILD_TYPE MATCHES "featheresp32")
-    add_definitions(-D'PLATFORMIO=40303')
+    add_definitions(-D'PLATFORMIO=40304')
     add_definitions(-D'ARDUINO_FEATHER_ESP32')
     add_definitions(-D'MYLOG_LOG_LEVEL=MYLOG_LOG_LEVEL_VERBOSE')
     add_definitions(-D'ESP32')

@@ -6,32 +6,16 @@
  * Apache 2.0 licensed https://www.apache.org/licenses/LICENSE-2.0
  */
 
-#include "Arduino.h"
-#include "HTTPClient.h"
-#include "WiFiClientSecure.h"
-
-#include <driver/adc.h>
-#include <driver/rtc_io.h>
-#include <soc/rtc.h>
-
-#include "mlog.h"
-#include "net_util.h"
-#include "rtc_data.h"
-
-bool isInitialBoot();
-void handleBoot();
-void handleWakeup();
-void handleGateChange(GateState state);
-void handleSendTelemetry();
-void enterDeepSleep(uint32_t duration_usec);
-bool sendIotTelemetry(WiFiClientSecure &client);
-bool sendPushoverEvent(WiFiClientSecure &client, GateState state);
-const char *wake_reason();
+#include "main.h"
 
 // Program always starts (and ends) here; loop() is never used.
 void setup() {
     rtcd::ts_wake = time(nullptr);
-    rtcd::cpu_wakeups++;
+    rtcd::ulp_sensor_checks += ulp_read(rtcd::ulp_acc);
+    rtcd::cpu_wakeups += 1;
+    LI("ulp_mes %u, cpu %llu, ulp acc %u, ulp %llu",
+       ulp_read(rtcd::ulp_adc5_value), rtcd::cpu_wakeups, rtcd::ulp_acc, rtcd::ulp_sensor_checks);
+    rtcd::ulp_acc = 0;
 
     Serial.begin(115200);
 
@@ -61,11 +45,15 @@ void handleBoot() {
 
     Gate gate{};
     rtcd::last_state = gate.measure();
+    rtcd::ulp_adc5_value = Gate::current_value();
+
+    prepareUlp();
 }
 
 void handleWakeup() {
     time_t sleep_dur = rtcd::ts_wake - rtcd::ts_start_sleep;
-    LI("wake %llu; slept %d sec (reason: %s)", rtcd::cpu_wakeups, sleep_dur, wake_reason());
+    LI("wake cpu:%llu ulp:%llu; slept %d sec (reason: %s)",
+       rtcd::cpu_wakeups, rtcd::ulp_sensor_checks, sleep_dur, wake_reason());
 
     Gate gate{};
     GateState curr_state = gate.measure();
@@ -73,7 +61,7 @@ void handleWakeup() {
     if (curr_state != rtcd::last_state) {
         LI("Gate change %s -> %s", gate.to_str(rtcd::last_state), gate.to_str(curr_state));
         rtcd::last_state = curr_state;
-        handleGateChange(curr_state);
+//        handleGateChange(curr_state);
     } else {
         LI("Gate remains %s", gate.to_str(curr_state));
     }
@@ -83,7 +71,7 @@ void handleWakeup() {
         LI("Deadline to send telemetry (now %s > %s)",
            timeStr(now).c_str(), timeStr(rtcd::ts_next_telemetry).c_str());
         rtcd::ts_next_telemetry = now + c::TELEMETRY_SEND_SEC;
-        handleSendTelemetry();
+//        handleSendTelemetry();
     }
 }
 
@@ -191,6 +179,13 @@ bool sendPushoverEvent(WiFiClientSecure &client, GateState state) {
     return code == 200;
 }
 
+void prepareUlp() {
+    size_t inst_size = sizeof(ulp_insn_t);
+    size_t num_words = sizeof(gate_ulp::program) / inst_size;
+    ESP_ERROR_CHECK(ulp_process_macros_and_load(0, gate_ulp::program, &num_words));
+    LI("loaded %u byte ULP program", num_words * inst_size);
+}
+
 void enterDeepSleep(uint32_t duration_usec) {
     LI("preparing for %d us deep sleep", duration_usec);
     WiFi.disconnect(true);
@@ -200,21 +195,28 @@ void enterDeepSleep(uint32_t duration_usec) {
 
     // Prevent current drain from internal pull up on flash controller
     rtc_gpio_isolate(GPIO_NUM_12);
+    rtc_gpio_isolate(GPIO_NUM_15);
 
-    // Prepare ADC1 to be read by ULP
-    // GPIO33 is ADC1_CH5, 0 = gate closed, 4095 = gate open
+    // Prepare ADC1 to be read by ULP; GPIO33 is ADC1_CH5
     adc1_config_channel_atten(ADC1_CHANNEL_5, ADC_ATTEN_DB_11);
     adc1_config_width(ADC_WIDTH_BIT_12);
     adc1_ulp_enable();
 
-    LI("entering deep sleep");
-    // todo: start ULP program - ulp_run()
+    LI("starting ULP");
+    ESP_ERROR_CHECK(ulp_set_wakeup_period(0, c::ULP_SLEEP_USEC));
     ESP_ERROR_CHECK(esp_sleep_enable_ulp_wakeup());
+    ESP_ERROR_CHECK(ulp_run(0));
+
+    LI("entering deep sleep");
     time(&rtcd::ts_start_sleep);
     esp_deep_sleep(duration_usec);
 }
 
 const char *wake_reason() {
+    if (esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_ULP) {
+        return "ULP wakeup";
+    }
+
     switch (esp_reset_reason()) {
         case ESP_RST_POWERON:
             return "Reset due to power-on event";

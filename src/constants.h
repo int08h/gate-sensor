@@ -11,12 +11,16 @@ namespace c {
     // Pushover device id
     const char* DEVICE_ID_PO = "sensor-dev";
 
-    // How long to deep sleep in the ULP
-    const uint32_t DEEP_SLEEP_SEC = 5;
+    // How long to deep sleep the CPU
+    const uint32_t DEEP_SLEEP_SEC = 10;
     const uint32_t DEEP_SLEEP_USEC = DEEP_SLEEP_SEC * 1000 * 1000;
 
+    // Length between ULP sensor checks
+    const uint32_t ULP_SLEEP_SEC = 1;
+    const uint32_t ULP_SLEEP_USEC = ULP_SLEEP_SEC * 1000 * 1000;
+
     // Interval between sending telemetry to GCP
-    const uint32_t TELEMETRY_SEND_SEC = 30;
+    const uint32_t TELEMETRY_SEND_SEC = 60;
 
     // This many tries to get an NTP answer
     const uint32_t NTP_MAX_ATTEMPTS = 3;

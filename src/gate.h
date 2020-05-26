@@ -17,8 +17,8 @@ public:
         adc1_config_width(ADC_WIDTH_BIT_12);
     }
 
-    GateState measure() const {
-        int value = adc1_get_raw(ADC1_CHANNEL_5);
+    GateState measure() {
+        uint32_t value = current_value();
 
         if (value < THRESHOLD_LOW) {
             return CLOSED;
@@ -29,7 +29,11 @@ public:
         }
     }
 
-    static const char* to_str(GateState state) {
+    static uint32_t current_value() {
+        return adc1_get_raw(ADC1_CHANNEL_5) & 0xffff;
+    }
+
+    static const char *to_str(GateState state) {
         switch (state) {
             case OPEN:
                 return "OPEN";
