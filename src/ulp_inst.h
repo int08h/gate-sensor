@@ -112,10 +112,8 @@
 #define I_PUTO(reg_src, reg_offset, val_offset, var) \
     I_ST(reg_src, reg_offset, (uint16_t)(RTC_WORD_OFFSET(var) - (val_offset)))
 
-
 #define I_ADC_POWER_OFF() I_WR_REG(SENS_SAR_MEAS_WAIT2_REG, SENS_FORCE_XPD_SAR_S, SENS_FORCE_XPD_SAR_S + 1, SENS_FORCE_XPD_SAR_PD)
 
 #define I_ADC_POWER_ON() I_WR_REG(SENS_SAR_MEAS_WAIT2_REG, SENS_FORCE_XPD_SAR_S, SENS_FORCE_XPD_SAR_S + 1, SENS_FORCE_XPD_SAR_PU)
-
 
 #endif //GATE_SENSOR_ULP_INST_H

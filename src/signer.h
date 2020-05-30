@@ -18,118 +18,116 @@
 #include <mbedtls/ctr_drbg.h>
 
 class Signer {
-public:
-    explicit Signer(const char *device_key)
-            : device_key(device_key), entropy_ctx(), ctr_drbg_ctx(), pk_ctx() {
-        mbedtls_entropy_init(&entropy_ctx);
-        mbedtls_ctr_drbg_init(&ctr_drbg_ctx);
-        mbedtls_pk_init(&pk_ctx);
+ public:
+  explicit Signer(const char *device_key)
+      : device_key(device_key), entropy_ctx(), ctr_drbg_ctx(), pk_ctx() {
+    mbedtls_entropy_init(&entropy_ctx);
+    mbedtls_ctr_drbg_init(&ctr_drbg_ctx);
+    mbedtls_pk_init(&pk_ctx);
 
-        prepareEntropy();
-        loadPrivateKey();
+    prepareEntropy();
+    loadPrivateKey();
+  }
+
+  virtual ~Signer() {
+    mbedtls_pk_free(&pk_ctx);
+    mbedtls_ctr_drbg_free(&ctr_drbg_ctx);
+    mbedtls_entropy_free(&entropy_ctx);
+  }
+
+  Signer(const Signer &) = delete;
+  Signer &operator=(const Signer &) = delete;
+
+  void sign(String &content) {
+    unsigned char digest[32];
+    const mbedtls_md_info_t *md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
+    int rc = mbedtls_md(
+        md_info,
+        (const unsigned char *) content.c_str(),
+        content.length(),
+        digest
+    );
+
+    if (rc != 0) {
+      printf("sha256 failure %d: %s\n", rc, mbedErrToStr(rc).c_str());
+      content += ".sha256_error";
+      return;
     }
 
-    virtual ~Signer() {
-        mbedtls_pk_free(&pk_ctx);
-        mbedtls_ctr_drbg_free(&ctr_drbg_ctx);
-        mbedtls_entropy_free(&entropy_ctx);
+    unsigned char sig_buf[512];
+    memset(sig_buf, 0, sizeof(sig_buf));
+    size_t sig_size;
+    rc = mbedtls_pk_sign(
+        &pk_ctx,
+        MBEDTLS_MD_SHA256,
+        digest,
+        sizeof(digest),
+        sig_buf,
+        &sig_size,
+        mbedtls_ctr_drbg_random,
+        &ctr_drbg_ctx
+    );
+    LI("sig size %u", sig_size);
+
+    if (rc != 0) {
+      printf("failed to sign: %d : %s\n", rc, mbedErrToStr(rc).c_str());
+      content += ".signature_error";
+      return;
     }
 
-    Signer(const Signer &) = delete;
+    char sig_b64[768];
+    memset(sig_b64, 0, sizeof(sig_b64));
+    base64url_encode(sig_buf, sig_size, sig_b64);
 
-    Signer &operator=(const Signer &) = delete;
+    content += ".";
+    content += sig_b64;
+  }
 
-    void sign(String &content) {
-        unsigned char digest[32];
-        const mbedtls_md_info_t *md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-        int rc = mbedtls_md(
-                md_info,
-                (const unsigned char *) content.c_str(),
-                content.length(),
-                digest
-        );
+  void prepareEntropy() {
+    configASSERT(WiFi.isConnected() && "wifi must be enabled for HWRNG");
 
-        if (rc != 0) {
-            printf("sha256 failure %d: %s\n", rc, mbedErrToStr(rc).c_str());
-            content += ".sha256_error";
-            return;
-        }
+    uint8_t seed[16];
+    esp_fill_random(seed, sizeof(seed));
 
-        unsigned char sig_buf[512];
-        memset(sig_buf, 0, sizeof(sig_buf));
-        size_t sig_size;
-        rc = mbedtls_pk_sign(
-                &pk_ctx,
-                MBEDTLS_MD_SHA256,
-                digest,
-                sizeof(digest),
-                sig_buf,
-                &sig_size,
-                mbedtls_ctr_drbg_random,
-                &ctr_drbg_ctx
-        );
-        LI("sig size %u", sig_size);
+    int rc = mbedtls_ctr_drbg_seed(
+        &ctr_drbg_ctx,
+        mbedtls_entropy_func,
+        &entropy_ctx,
+        (unsigned char *) seed,
+        sizeof(seed)
+    );
 
-        if (rc != 0) {
-            printf("failed to sign: %d : %s\n", rc, mbedErrToStr(rc).c_str());
-            content += ".signature_error";
-            return;
-        }
-
-        char sig_b64[768];
-        memset(sig_b64, 0, sizeof(sig_b64));
-        base64url_encode(sig_buf, sig_size, sig_b64);
-
-        content += ".";
-        content += sig_b64;
+    if (rc != 0) {
+      LE("entropy: %d %s", rc, mbedErrToStr(rc).c_str());
     }
+  }
 
-    void prepareEntropy() {
-        configASSERT(WiFi.isConnected() && "wifi must be enabled for HWRNG");
+  void loadPrivateKey() {
+    int rc = mbedtls_pk_parse_key(
+        &pk_ctx,
+        (unsigned char *) device_key,
+        strlen(device_key) + 1,
+        nullptr,
+        0
+    );
 
-        uint8_t seed[16];
-        esp_fill_random(seed, sizeof(seed));
-
-        int rc = mbedtls_ctr_drbg_seed(
-                &ctr_drbg_ctx,
-                mbedtls_entropy_func,
-                &entropy_ctx,
-                (unsigned char *) seed,
-                sizeof(seed)
-        );
-
-        if (rc != 0) {
-            LE("entropy: %d %s", rc, mbedErrToStr(rc).c_str());
-        }
+    if (rc != 0) {
+      LE("parsing private key: %d %s", rc, mbedErrToStr(rc).c_str());
     }
+  }
 
-    void loadPrivateKey() {
-        int rc = mbedtls_pk_parse_key(
-                &pk_ctx,
-                (unsigned char *) device_key,
-                strlen(device_key) + 1,
-                nullptr,
-                0
-        );
+  String mbedErrToStr(int code) const {
+    char buffer[256];
+    mbedtls_strerror(code, buffer, sizeof(buffer));
+    return String(buffer);
+  }
 
-        if (rc != 0) {
-            LE("parsing private key: %d %s", rc, mbedErrToStr(rc).c_str());
-        }
-    }
+ private:
+  const char *device_key;
 
-    String mbedErrToStr(int code) const {
-        char buffer[256];
-        mbedtls_strerror(code, buffer, sizeof(buffer));
-        return String(buffer);
-    }
-
-private:
-    const char *device_key;
-
-    mbedtls_entropy_context entropy_ctx;
-    mbedtls_ctr_drbg_context ctr_drbg_ctx;
-    mbedtls_pk_context pk_ctx;
+  mbedtls_entropy_context entropy_ctx;
+  mbedtls_ctr_drbg_context ctr_drbg_ctx;
+  mbedtls_pk_context pk_ctx;
 };
-
 
 #endif //GATE_SENSOR_SIGNER_H
