@@ -11,11 +11,11 @@
 // Program always starts (and ends) here; loop() is never used.
 void setup() {
     rtcd::ts_wake = time(nullptr);
-    rtcd::ulp_sensor_checks += ulp_read(rtcd::ulp_acc);
     rtcd::cpu_wakeups += 1;
-    LI("ulp_mes %u, cpu %llu, ulp acc %u, ulp %llu",
-       ulp_read(rtcd::ulp_adc5_value), rtcd::cpu_wakeups, rtcd::ulp_acc, rtcd::ulp_sensor_checks);
-    rtcd::ulp_acc = 0;
+    rtcd::ulp_sensor_checks += ulp_read(rtcd::ulp_check_acc);
+    rtcd::ulp_out_of_range += ulp_read(rtcd::ulp_oor_acc);
+    rtcd::ulp_check_acc = 0;
+    rtcd::ulp_oor_acc = 0;
 
     Serial.begin(115200);
 
@@ -44,19 +44,19 @@ void handleBoot() {
     rtcd::ts_next_telemetry = now + 1;
 
     Gate gate{};
-    rtcd::last_state = gate.measure();
-    rtcd::ulp_adc5_value = Gate::current_value();
+    rtcd::last_state = gate.current_state();
+    rtcd::ulp_adc5_value = gate.current_value();
 
     prepareUlp();
 }
 
 void handleWakeup() {
     time_t sleep_dur = rtcd::ts_wake - rtcd::ts_start_sleep;
-    LI("wake cpu:%llu ulp:%llu; slept %d sec (reason: %s)",
-       rtcd::cpu_wakeups, rtcd::ulp_sensor_checks, sleep_dur, wake_reason());
+    LI("wake cpu:%llu ulp:%llu (oor %llu); slept %d sec (reason: %s)",
+       rtcd::cpu_wakeups, rtcd::ulp_sensor_checks, rtcd::ulp_out_of_range, sleep_dur, wake_reason());
 
     Gate gate{};
-    GateState curr_state = gate.measure();
+    GateState curr_state = gate.current_state();
 
     if (curr_state != rtcd::last_state) {
         LI("Gate change %s -> %s", gate.to_str(rtcd::last_state), gate.to_str(curr_state));
@@ -125,8 +125,9 @@ bool sendIotTelemetry(WiFiClientSecure &client) {
 
     time_t now = time(nullptr);
     char ptmp[256];
-    snprintf(ptmp, sizeof(ptmp), c::GCP_STATE_FMT, now, WiFi.RSSI(), rtcd::last_state,
-             rtcd::sent_events, rtcd::sent_telemetry, rtcd::cpu_wakeups, rtcd::ulp_sensor_checks);
+    snprintf(ptmp, sizeof(ptmp), c::GCP_STATE_FMT, now, WiFi.RSSI(),
+             rtcd::last_state, rtcd::sent_events, rtcd::sent_telemetry,
+             rtcd::cpu_wakeups, rtcd::ulp_sensor_checks, rtcd::ulp_out_of_range);
     char b64tmp[512];
     base64url_encode((unsigned char *) ptmp, strlen(ptmp), b64tmp);
 

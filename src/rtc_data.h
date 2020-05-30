@@ -11,7 +11,9 @@
 // accessible by the ULP and retain their value across CPU restarts
 namespace rtcd {
     // Accumulate sensor check counts while ULP is running; cleared on wake
-    RTC_DATA_ATTR static uint32_t ulp_acc = 0;
+    RTC_DATA_ATTR static uint32_t ulp_check_acc = 0;
+    // Accumulate number out-of-range measurements
+    RTC_DATA_ATTR static uint32_t ulp_oor_acc = 0;
     // Most recent ADC measurement value
     RTC_DATA_ATTR static uint32_t ulp_adc5_value = 999;
 
@@ -26,6 +28,8 @@ namespace rtcd {
     RTC_DATA_ATTR static uint64_t cpu_wakeups = 0;
     // Total number of ULP sensor checks
     RTC_DATA_ATTR static uint64_t ulp_sensor_checks = 0;
+    // Total number of ULP sensor measurements THRESHOLD_LOW < val < THRESHOLD_HIGH
+    RTC_DATA_ATTR static uint64_t ulp_out_of_range = 0;
 
     RTC_DATA_ATTR static time_t ts_boot = 0;
     RTC_DATA_ATTR static time_t ts_wake = 0;

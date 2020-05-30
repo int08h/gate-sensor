@@ -4,12 +4,20 @@
 #include <driver/adc.h>
 
 enum GateState {
-    UNKNOWN = 0,
-    CLOSED = 1,
-    OPEN = 2
+    UNKNOWN = 0x01,
+    CLOSED = 0x02,
+    OPEN = 0x04
 };
 
 class Gate {
+public:
+    // rarely, but occasionally, the ADC reading from the US5881 will be
+    // above 0 but below 4095 full scale. Sensor is spec'ed min 3.5V but we're
+    // driving it with 3.3V ... also bypass caps are indicated in the datasheet
+    // but those aren't being used here either.
+    static constexpr uint32_t THRESHOLD_LOW = 100;
+    static constexpr uint32_t THRESHOLD_HIGH = 4000;
+
 public:
     Gate() {
         // GPIO33 is ADC1_CH5, 0 = gate closed, 4095 = gate open
@@ -17,7 +25,7 @@ public:
         adc1_config_width(ADC_WIDTH_BIT_12);
     }
 
-    GateState measure() {
+    GateState current_state() {
         uint32_t value = current_value();
 
         if (value < THRESHOLD_LOW) {
@@ -29,7 +37,7 @@ public:
         }
     }
 
-    static uint32_t current_value() {
+    uint32_t current_value() {
         return adc1_get_raw(ADC1_CHANNEL_5) & 0xffff;
     }
 
@@ -45,13 +53,6 @@ public:
         }
     }
 
-private:
-    // rarely, but occasionally, the ADC reading from the US5881 will be
-    // above 0 but below 4095 full scale. Sensor is spec'ed min 3.5V but we're
-    // driving it with 3.3V ... also bypass caps are indicated in the datasheet
-    // but those aren't being used here either.
-    static const int THRESHOLD_LOW = 200;
-    static const int THRESHOLD_HIGH = 3000;
 };
 
 #endif //GATE_SENSOR_GATE_H
