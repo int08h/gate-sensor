@@ -1,9 +1,9 @@
 # Overview
 
 Implementation of an ESP32 based sensor for detecting open/close condition of a Hall-effect sensor 
-and communicating events via Wifi to Google Cloud IoT Core.
+and communicating telemetry via Wifi to Google Cloud IoT Core and events to Pushover.
 
-This is very much a "scratch your own itch" type project and is not intended for wide use. 
+This is very much a "scratch your own itch" type project and is not intended for wide use. YMMV.
 
 # Shout-outs and resources
 
@@ -29,6 +29,21 @@ making it a poor choice for powering via a battery. So Sad.
 ## [EzSBC ESP32-01](https://www.ezsbc.com/index.php/products/wifi01-33.html)
 
 Out of the box 17uA quiescent power consumption. WROOM-32 based board just like the Feather. Great price.
+
+# Battery 
+
+The EzSBC lacks a battery controller so battery protection must be provided elsewhere. 
+The sensor uses a 3,500 mAh [LG MJ1 18650](https://cdn.shopify.com/s/files/1/0697/3395/files/Specification_INR18650MJ1_22.08.2014.pdf) 
+with integrated protection board from [LiIon Wholesale](https://liionwholesale.com/collections/batteries/products/protected-lg-mj1-18650-battery-genuine-tested-10a-3500mah-button-top-wholesale-discount?variant=12530399684). 
+
+# Power consumption
+
+Constant draw 
+
+| Source | Draw (mA) |
+| ------ | --------- |
+| US5881 (3.3V * 10kOhm) | 0.330 |
+| ESP-32 quiescent       | 0.020 |
 
 # Random notes
 

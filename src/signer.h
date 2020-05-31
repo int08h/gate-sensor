@@ -10,7 +10,7 @@
 #include "constants.h"
 #include "b64url.h"
 #include "mlog.h"
-#include "keys.h"
+#include "secrets.h"
 
 #include <mbedtls/pk.h>
 #include <mbedtls/error.h>

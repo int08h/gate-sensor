@@ -61,7 +61,7 @@ void handleWakeup() {
   if (curr_state != rtcd::last_state) {
     LI("Gate change %s -> %s", gate.to_str(rtcd::last_state), gate.to_str(curr_state));
     rtcd::last_state = curr_state;
-//        handleGateChange(curr_state);
+    handleGateChange(curr_state);
   } else {
     LI("Gate remains %s", gate.to_str(curr_state));
   }
@@ -71,7 +71,7 @@ void handleWakeup() {
     LI("Deadline to send telemetry (now %s > %s)",
        timeStr(now).c_str(), timeStr(rtcd::ts_next_telemetry).c_str());
     rtcd::ts_next_telemetry = now + c::TELEMETRY_SEND_SEC;
-//        handleSendTelemetry();
+    handleSendTelemetry();
   }
 }
 
@@ -112,12 +112,12 @@ void handleSendTelemetry() {
 
 // Send telemetry to GCP IoT Core
 bool sendIotTelemetry(WiFiClientSecure &client) {
-  client.setCACert(keys::google_root_bundle);
+  client.setCACert(certs::google_root_bundle);
 
   HTTPClient req;
   req.setConnectTimeout(/*ms*/10 * 1000);
 
-  String url = String(addr::GOOGLE_IOT_URL) + String(c::DEVICE_ID_GOOGLE) + ":publishEvent";
+  String url = String(addr::GOOGLE_IOT_URL) + String(secrets::DEVICE_ID_GOOGLE) + ":publishEvent";
   req.begin(client, url);
   req.addHeader("Authorization", rtcd::jwt.asHeader());
   req.addHeader("Content-Type", "application/json");
@@ -146,7 +146,7 @@ bool sendIotTelemetry(WiFiClientSecure &client) {
 
 // Send mobile alert to Pushover
 bool sendPushoverEvent(WiFiClientSecure &client, GateState state) {
-  client.setCACert(keys::digicert_ca);
+  client.setCACert(certs::digicert_ca);
 
   HTTPClient req;
   req.setConnectTimeout(/*ms*/10 * 1000);
@@ -156,18 +156,18 @@ bool sendPushoverEvent(WiFiClientSecure &client, GateState state) {
   req.addHeader("Cache-Control", "no-cache");
 
   String payload = String("message=")
-      + String(c::DEVICE_ID_HUMAN)
+      + String(secrets::DEVICE_ID_HUMAN)
       + " is now "
       + Gate::to_str(state);
 
   payload.replace(' ', '+');
 
   payload += "&token=";
-  payload += keys::po_token;
+  payload += secrets::po_token;
   payload += "&user=";
-  payload += keys::po_user;
+  payload += secrets::po_user;
   payload += "&device=";
-  payload += c::DEVICE_ID_PO;
+  payload += secrets::DEVICE_ID_PO;
 
   int code = req.POST(payload);
   rtcd::sent_events++;
