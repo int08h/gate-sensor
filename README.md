@@ -18,14 +18,14 @@ First version deployed. Major features:
 
 | Picture | Part | Description | 
 | ------- | ---- | ----------- |
-| ![](doc/pics/ezsbc_board.jpg) | [EzSBC ESP32-01](https://www.ezsbc.com/index.php/products/wifi01-33.html) | Power optimized ESP32 dev board |
-| ![](doc/pics/melexis-us5881.jpg) | [Melexis US5881](https://www.melexis.com/en/product/US5881/Unipolar-Hall-Effect-Switch-Low-Sensitivity) | Sensor to detect when gate is open/closed via magnetic field |
-| ![](doc/pics/mj1pcb_large.jpg) | [Protected LG MJ1 18650](https://liionwholesale.com/collections/batteries/products/protected-lg-mj1-18650-battery-genuine-tested-10a-3500mah-button-top-wholesale-discount?variant=12530399684) | Battery to power ESP32 and Hall sensor |
-| ![](doc/pics/keystone_1042p.jpg) | [Keystone 1042P](https://www.keyelco.com/product.cfm/product_id/918) | Battery holder |
-| ![](doc/pics/polycase_sk-12.jpg) | [Polycase SK-12](https://www.polycase.com/sk-12) | Water-resistant (IP66) enclosure w/ knock-outs |
-| ![](doc/pics/cable_gland_cg-30.jpg) | [Polycase CG-3 cable gland](https://www.polycase.com/cg3) | Water-resistant (IP68) ratcheting seal for Hall sensor cable |
-| ![](doc/pics/dx04b-n52.jpg) | [KJ Magnetics DX04B-N52](https://www.kjmagnetics.com/proddetail.asp?prod=DX04B-N52) | 1" dia x 0.25" thick N52 neodymium disc magnet |
-| ![](doc/pics/10k_resistor.jpg) | [10k ohm resistor](https://www.adafruit.com/product/2784) | Pull-up for Hall sensor open-drain output pin |
+| ![](doc/pics/small_ezsbc_board.jpg) | [EzSBC ESP32-01](https://www.ezsbc.com/index.php/products/wifi01-33.html) | Power optimized ESP32 dev board |
+| ![](doc/pics/small_melexis-us5881.jpg) | [Melexis US5881](https://www.melexis.com/en/product/US5881/Unipolar-Hall-Effect-Switch-Low-Sensitivity) | Sensor to detect when gate is open/closed via magnetic field |
+| ![](doc/pics/small_mj1pcb_large.jpg) | [Protected LG MJ1 18650](https://liionwholesale.com/collections/batteries/products/protected-lg-mj1-18650-battery-genuine-tested-10a-3500mah-button-top-wholesale-discount?variant=12530399684) | Battery to power ESP32 and Hall sensor |
+| ![](doc/pics/small_keystone_1042p.jpg) | [Keystone 1042P](https://www.keyelco.com/product.cfm/product_id/918) | Battery holder |
+| ![](doc/pics/small_polycase_sk-12.jpg) | [Polycase SK-12](https://www.polycase.com/sk-12) | Water-resistant (IP66) enclosure w/ knock-outs |
+| ![](doc/pics/small_cable_gland_cg-30.jpg) | [Polycase CG-3 cable gland](https://www.polycase.com/cg3) | Water-resistant (IP68) ratcheting seal for Hall sensor cable |
+| ![](doc/pics/small_dx04b-n52.jpg) | [KJ Magnetics DX04B-N52](https://www.kjmagnetics.com/proddetail.asp?prod=DX04B-N52) | 1" dia x 0.25" thick N52 neodymium disc magnet |
+| ![](doc/pics/small_10k_resistor.jpg) | [10k ohm resistor](https://www.adafruit.com/product/2784) | Pull-up for Hall sensor open-drain output pin |
 
 ## The Mk1 in the field
 
@@ -38,10 +38,9 @@ Closeup of the _tiny_ gap between magnet and hall sensor
 Everything stuffed into the enclosure
 ![](doc/pics/components_packed.jpg)
 
-Enclosure contents unpacked, (Yes, I used pin jumper/hookup wires. 
-Not exactly corrosion resistant I know.) 
+Enclosure contents unpacked (yes, I used pin jumper/hookup wires. Not exactly corrosion 
+resistant I know).
 ![](doc/pics/components_detail.jpg)
-
 
 
 ## Power consumption
