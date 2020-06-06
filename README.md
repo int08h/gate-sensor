@@ -10,7 +10,9 @@ This is very much a "scratch your own itch" type project and is not intended for
 First version deployed. Major features:
 
 * Hall-effect sensor to detect gate open/close
-* ULP polls sensor while remaining in deep sleep (main CPU active less than 10 seconds per hour)
+* The [Ultra-Low Power](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/ulp.html) 
+  coprocessor [polls the Hall sensor](src/ulp_prog.h) while the main CPU remains in 
+  deep sleep (main CPU is active for only ~3-5 seconds per hour)
 * Open/Close event notifications via [Pushover](https://pushover.net/)
 * Telemetry sent to [GCP IoT Core](https://cloud.google.com/iot-core) every 15 minutes
 
@@ -41,6 +43,17 @@ Everything stuffed into the enclosure
 Enclosure contents unpacked (yes, I used pin jumper/hookup wires. Not exactly corrosion 
 resistant I know).
 ![](doc/pics/components_detail.jpg)
+
+Closeup of the US5881 Hall sensor installed into three female pin jumper sockets. Pins are
+in order 1, 2, 3 from top to bottom. The resistor is applied across pins 1 (Vdd) and 
+3 (Output) to pull-up the sensor's output pin. Pin 2 is ground. 
+![](doc/pics/sensor_bare.jpg)
+
+# Waterproofing the sensor with a conformal coating 
+
+Why the slick and shiny appearance of the pin sockets and sensor? Thanks to the super-
+sophisticated _conformal coating_ ... aka clear gel nail polish! ;) 
+![](doc/pics/conformal_coating.jpg)
 
 
 ## Power consumption
