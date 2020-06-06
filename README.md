@@ -1,9 +1,56 @@
 # Overview
 
-Implementation of an ESP32 based sensor for detecting open/close condition of a Hall-effect sensor 
+Implementation of an [ESP32](https://en.wikipedia.org/wiki/ESP32) based sensor for detecting open/close condition of a Hall-effect sensor 
 and communicating telemetry via Wifi to Google Cloud IoT Core and events to Pushover.
 
 This is very much a "scratch your own itch" type project and is not intended for wide use. YMMV.
+
+# Sensor Mk 1 
+
+First version deployed. Major features:
+
+* Hall-effect sensor to detect gate open/close
+* ULP polls sensor while remaining in deep sleep (main CPU active less than 10 seconds per hour)
+* Open/Close event notifications via [Pushover](https://pushover.net/)
+* Telemetry sent to [GCP IoT Core](https://cloud.google.com/iot-core) every 15 minutes
+
+## Bill of Materials 
+
+| Picture | Part | Description | 
+| ------- | ---- | ----------- |
+| ![](doc/pics/ezsbc_board.jpg) | [EzSBC ESP32-01](https://www.ezsbc.com/index.php/products/wifi01-33.html) | Power optimized ESP32 dev board |
+| ![](doc/pics/melexis-us5881.jpg) | [Melexis US5881](https://www.melexis.com/en/product/US5881/Unipolar-Hall-Effect-Switch-Low-Sensitivity) | Sensor to detect when gate is open/closed via magnetic field |
+| ![](doc/pics/mj1pcb_large.jpg) | [Protected LG MJ1 18650](https://liionwholesale.com/collections/batteries/products/protected-lg-mj1-18650-battery-genuine-tested-10a-3500mah-button-top-wholesale-discount?variant=12530399684) | Battery to power ESP32 and Hall sensor |
+| ![](doc/pics/keystone_1042p.jpg) | [Keystone 1042P](https://www.keyelco.com/product.cfm/product_id/918) | Battery holder |
+| ![](doc/pics/polycase_sk-12.jpg) | [Polycase SK-12](https://www.polycase.com/sk-12) | Water-resistant (IP66) enclosure w/ knock-outs |
+| ![](doc/pics/cable_gland_cg-30.jpg) | [Polycase CG-3 cable gland](https://www.polycase.com/cg3) | Water-resistant (IP68) ratcheting seal for Hall sensor cable |
+| ![](doc/pics/dx04b-n52.jpg) | [KJ Magnetics DX04B-N52](https://www.kjmagnetics.com/proddetail.asp?prod=DX04B-N52) | 1" dia x 0.25" thick N52 neodymium disc magnet |
+| ![](doc/pics/10k_resistor.jpg) | [10k ohm resistor](https://www.adafruit.com/product/2784) | Pull-up for Hall sensor open-drain output pin |
+
+## The Mk1 in the field
+
+As installed on the gate 
+![](doc/pics/installed.jpg)
+
+Closeup of the _tiny_ gap between magnet and hall sensor
+![](doc/pics/sensor_closeup.jpg)
+
+Everything stuffed into the enclosure
+![](doc/pics/components_packed.jpg)
+
+Enclosure contents unpacked, (Yes, I used pin jumper/hookup wires. 
+Not exactly corrosion resistant I know.) 
+![](doc/pics/components_detail.jpg)
+
+
+
+## Power consumption
+
+| Source | Current (milli-Amps) |
+| ------ | --------- |
+| ESP32 active, WiFi TX   | 260.0   |
+| ESP32 deep sleep in ULP |   0.017 |
+| US5881 (3.3V * 10kOhm)  |   0.330 |
 
 # Shout-outs and resources
 
@@ -30,20 +77,14 @@ making it a poor choice for powering via a battery. So Sad.
 
 Out of the box 17uA quiescent power consumption. WROOM-32 based board just like the Feather. Great price.
 
+Board pinout: 
+![EZSBC ESP32-01 pinout](doc/pics/ezsbc_esp32_pinout.jpg)
+
 # Battery 
 
-The EzSBC lacks a battery controller so battery protection must be provided elsewhere. 
-The sensor uses a 3,500 mAh [LG MJ1 18650](https://cdn.shopify.com/s/files/1/0697/3395/files/Specification_INR18650MJ1_22.08.2014.pdf) 
+The EzSBC lacks a battery controller so battery [protection](https://learn.adafruit.com/li-ion-and-lipoly-batteries/protection-circuitry) 
+must be provided elsewhere. The sensor uses a 3,500 mAh [LG MJ1 18650](https://cdn.shopify.com/s/files/1/0697/3395/files/Specification_INR18650MJ1_22.08.2014.pdf) 
 with integrated protection board from [LiIon Wholesale](https://liionwholesale.com/collections/batteries/products/protected-lg-mj1-18650-battery-genuine-tested-10a-3500mah-button-top-wholesale-discount?variant=12530399684). 
-
-# Power consumption
-
-Constant draw 
-
-| Source | Draw (mA) |
-| ------ | --------- |
-| US5881 (3.3V * 10kOhm) | 0.330 |
-| ESP-32 quiescent       | 0.020 |
 
 # Random notes
 
@@ -58,11 +99,11 @@ Constant draw
 ESP32's on-board Hall effect sensor calibration varies between chips, is not that sensitive, 
 and is fairly noisy. The [Melexis US5881](https://www.melexis.com/en/product/US5881/Unipolar-Hall-Effect-Switch-Low-Sensitivity) 
 is a great replacement. It reads as Vgnd/0 V when the south pole is present (0 from the ADC) and 
-Vdd/3.3 V when "open" (4095 in the ADC). No noise, just a binary open/closed.
+Vdd/3.3 V when "open" (4095 in the ADC). 
 
-## Lower power ESP32
+## Lower power consumption in ESP32
 
-* Disable GPIO pins 12 and 15 
+* Disable GPIO pins 12 and 15 to prevent drain from internal pull-ups.
 
 # Copyright and license
 
