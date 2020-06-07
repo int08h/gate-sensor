@@ -163,9 +163,9 @@ bool sendPushoverEvent(WiFiClientSecure &client, GateState state) {
   payload.replace(' ', '+');
 
   payload += "&token=";
-  payload += secrets::po_token;
+  payload += secrets::PO_TOKEN;
   payload += "&user=";
-  payload += secrets::po_user;
+  payload += secrets::PO_USER;
   payload += "&device=";
   payload += secrets::DEVICE_ID_PO;
 
