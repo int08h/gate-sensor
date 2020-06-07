@@ -60,7 +60,7 @@ sophisticated _conformal coating_ ... aka clear gel nail polish! ;)
 
 | Source | Current (milli-Amps) |
 | ------ | --------- |
-| ESP32 active, WiFi TX   | 260.0   |
+| ESP32 active, WiFi TX   | 180.0   |
 | ESP32 deep sleep in ULP |   0.017 |
 | US5881 (3.3V * 10kOhm)  |   0.330 |
 

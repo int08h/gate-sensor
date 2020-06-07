@@ -3,10 +3,12 @@
 
 #include <Arduino.h>
 #include "WiFiClientSecure.h"
-#include "addr.h"
-#include "mlog.h"
-#include "constants.h"
 #include "lwip/apps/sntp.h"
+
+#include "addr.h"
+#include "constants.h"
+#include "mlog.h"
+#include "secrets.h"
 
 String timeStr(time_t now) {
   char buf[32] = {};
@@ -35,7 +37,7 @@ boolean connectWifi() {
   const char *ssid = "channing-iot";
   const char *pass = "welcome to iot!";
 
-  WiFi.config(addr::LOCAL, addr::GW, addr::SUBNET, addr::DNS1, addr::DNS2);
+  WiFi.config(secrets::LOCAL, addr::GW, addr::SUBNET, addr::DNS1, addr::DNS2);
   WiFi.begin(ssid, pass);
 
   waitForWifi();

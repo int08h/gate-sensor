@@ -9,6 +9,7 @@
 #include "HTTPClient.h"
 #include "WiFiClientSecure.h"
 
+#include "accel.h"
 #include "certs.h"
 #include "secrets.h"
 #include "mlog.h"

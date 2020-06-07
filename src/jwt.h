@@ -41,7 +41,7 @@ class Jwt {
     newJwt += c::JWT_RSA_HEADER_B64;
     newJwt += claims_b64;
 
-    Signer signer{secrets::rsa_device_key};
+    Signer signer{secrets::RSA_DEVICE_KEY};
     signer.sign(newJwt);
 
     jwt.fill(0);

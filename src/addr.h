@@ -5,8 +5,8 @@
 #include <IPAddress.h>
 
 namespace addr {
+// local addr in secrets.h
 IPAddress GW = IPAddress(192, 168, 1, 1);
-IPAddress LOCAL = IPAddress(192, 168, 1, 230);
 IPAddress SUBNET = IPAddress(255, 255, 255, 0);
 
 IPAddress DNS1 = IPAddress(8, 8, 8, 8);
